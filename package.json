@@ -1,18 +1,42 @@
 {
   "name": "swagger-to-ts",
   "version": "0.0.1",
-  "description": "",
-  "author": "index.js",
+  "description": "swagger-to-ts",
+  "author": "mufeng",
   "private": true,
   "scripts": {
     "lint": "eslint .",
     "prepare": "husky install",
-    "commit": "git-cz"
+    "commit": "git-cz",
+    "lint-stage": "npx lit-staged"
   },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:gaofengJ/swagger-to-ts.git"
+  },
+  "homepage": "https://github.com/gaofengJ/swagger-to-ts#readme",
+  "keywords": [
+    "swagger",
+    "ts",
+    "typescript",
+    "interface",
+    "api",
+    "modules"
+  ],
+  "files": [
+    "dist",
+    "templates",
+    "README.md"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/types/index.d.ts",
   "dependencies": {
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
+    "chalk": "^5.3.0",
     "eslint": "^8.42.0",
+    "eslint-config-airbnb": "^19.0.4",
     "eslint-config-prettier": "^9.0.0",
     "eslint-import-resolver-alias": "^1.1.2",
     "eslint-plugin-prettier": "^5.0.0",
@@ -30,8 +54,8 @@
     "lint-staged": "13"
   },
   "lint-staged": {
-    "**/*.{js,jsx,ts,tsx}": [
-      "pnpm run lint"
+    "*.{js,ts}": [
+      "eslint --config=.eslintrc.js"
     ]
   }
 }
