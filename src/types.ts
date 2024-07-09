@@ -45,3 +45,10 @@ export interface IConfig {
 }
 
 export type IHttpMethod = 'get' | 'post' | 'put' | 'delete';
+
+export enum EHttpMethod {
+  get = 'get',
+  post = 'post',
+  put = 'put',
+  delete = 'delete',
+}

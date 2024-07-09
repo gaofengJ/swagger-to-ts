@@ -1,4 +1,7 @@
 import * as path from 'path';
+
+import prettier from 'prettier';
+
 import { IConfig } from '@/types';
 
 export const defaultConfig: IConfig = {
@@ -15,3 +18,14 @@ export const defaultConfig: IConfig = {
 };
 
 export const httpMethods = ['get', 'post', 'put', 'delete'];
+
+export const prettierOptions: prettier.Options = {
+  parser: 'babel-ts',
+  singleQuote: true,
+  printWidth: 100,
+  trailingComma: 'none',
+  semi: true,
+  tabWidth: 2,
+  useTabs: false,
+  jsxBracketSameLine: false,
+};
