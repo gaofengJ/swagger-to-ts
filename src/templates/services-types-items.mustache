@@ -1,0 +1,11 @@
+{{each list}}
+/**
+ * 类型名称：{{$value.label}}
+ *
+ * @description 接口路径：{{$value.path}}
+ * @description 接口分组：{{$value.tags}}
+ */
+export namespace {{$value.namespace}} {
+  {{$value.typeText}}
+}
+{{/each}}

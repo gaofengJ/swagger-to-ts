@@ -1,9 +1,9 @@
-import { baseConfig } from '@/configs';
+import { defaultConfig } from '@/configs';
 import { IConfig } from '@/types';
 
 export const genConfigs = (customConfig: IConfig) => {
   return {
-    ...baseConfig,
+    ...defaultConfig,
     ...customConfig,
   };
 };

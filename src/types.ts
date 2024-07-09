@@ -1,12 +1,23 @@
 export interface IConfig {
   /**
-   * Swagger 文档路径
+   * Swagger 文档路径，例如：http://127.0.0.1:3000/api-docs-json
    */
-  origin: string;
+  docUrl: string;
+
   /**
-   * 模板目录
+   * Swagger 文档版本
    */
-  templateDir: string;
+  docVersion?: string;
+
+  /**
+   * baseURL
+   */
+  baseURL?: string;
+
+  /**
+   * 自定义模板目录
+   */
+  templateDir?: string;
   /**
    * 输出目录
    */
@@ -14,21 +25,23 @@ export interface IConfig {
   /**
    * 接口文件名称
    */
-  servicesFileName: string;
+  servicesFileName?: string;
   /**
    * 类型文件名称
    */
-  typesFileName: string;
+  typesFileName?: string;
   /**
-   * 返回类型为 blob 的接口项
+   * 返回类型为 blob 的接口路径
    */
-  blobItems?: string[];
+  blobPaths?: string[];
   /**
-   * 要包含的接口项
+   * 要包含的接口路径
    */
-  includeItems?: string[];
+  includePaths?: string[];
   /**
-   * 排除的接口项
+   * 要排除的接口路径
    */
-  excludeItems?: string[];
+  excludePaths?: string[];
 }
+
+export type IHttpMethod = 'get' | 'post' | 'put' | 'delete';
