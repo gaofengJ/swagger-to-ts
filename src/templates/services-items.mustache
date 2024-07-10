@@ -1,14 +1,14 @@
 import type {
-  {{each list}}
-  {{$value.namespace}},
-  {{/each}}
+  {{#list}}
+  {{namespace}},
+  {{/list}}
 } from './{{typesFileName}}'
-{{each list}}
+{{#list}}
 /**
- * 接口名称：{{$value.summary}}
+ * 接口名称：{{summary}}
  *
- * @description 接口路径：{{$value.path}}
- * @description 接口分组：{{$value.tags.join(',')}}
+ * @description 接口路径：{{path}}
+ * @description 接口分组：{{tags.join(',')}}
  */
-export const {{$value.name}} = (params: {{$value.paramsType}},config: RequestConfig = {},) => axios.{{$value.method}}<{{$value.responseType}}>({{$value.requestPath}},{{params}},config);
-{{/each}}
+export const {{name}} = ({{> servicesItemArgs}},config: RequestConfig = {},) => axios.{{method}}<{{> servicesItemRes}}>('{{requestPath}}',{{> servicesItemData}},config);
+{{/list}}

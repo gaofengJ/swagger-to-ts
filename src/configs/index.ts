@@ -3,6 +3,7 @@ import * as path from 'path';
 import prettier from 'prettier';
 
 import { IConfig } from '@/types';
+import { WriteFileOptions } from 'fs';
 
 export const defaultConfig: IConfig = {
   docUrl: '',
@@ -29,3 +30,5 @@ export const prettierOptions: prettier.Options = {
   useTabs: false,
   jsxBracketSameLine: false,
 };
+
+export const fileOptions = { encoding: 'utf-8' } as WriteFileOptions;

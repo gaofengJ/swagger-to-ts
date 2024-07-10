@@ -52,3 +52,30 @@ export enum EHttpMethod {
   put = 'put',
   delete = 'delete',
 }
+
+export enum EHttpCode {
+  OK = '200',
+  CREATED = '201',
+}
+
+export interface IServicesViewListItem {
+  namespace: string;
+  summary: string;
+  path: string;
+  tags: string[];
+  name: string;
+  isParamPath: boolean; // 是否为参数路径 形如/a/b/{id}
+  hasParams: boolean;
+  paramsType: any;
+  hasBody: boolean;
+  bodyType: any;
+  method: string;
+  hasResponse: any;
+  responseType: any;
+  requestPath: string;
+}
+
+export interface IServicesView {
+  list: IServicesViewListItem[];
+  typesFileName: string;
+}

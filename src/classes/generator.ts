@@ -2,95 +2,168 @@ import * as fs from 'fs';
 import type { WriteFileOptions } from 'fs';
 import * as path from 'path';
 import * as Mustache from 'mustache';
-import prettier from 'prettier';
+import * as prettier from 'prettier';
 import type { OpenAPIV3 } from 'openapi-types';
 
-import { EHttpMethod, type IConfig } from '@/types';
-import { prettierOptions } from '@/configs';
-import { pathToPascalCase } from '@/utils';
+import type { IServicesView, IConfig, IServicesViewListItem } from '@/types';
+import { EHttpMethod } from '@/types';
+import { fileOptions, prettierOptions } from '@/configs';
+import { pathToPascalCase, removeBraces } from '@/utils';
+import type { PartialsOrLookupFn } from 'mustache';
 
 export class Generator {
   #config: IConfig;
 
   #doc: OpenAPIV3.Document;
 
-  #servicesView: any;
+  #fileOptions: WriteFileOptions = fileOptions;
+
+  #servicesView: IServicesView = {
+    list: [],
+    typesFileName: '',
+  };
 
   #typesVies: any;
 
   constructor(config: IConfig, doc: OpenAPIV3.Document) {
     this.#config = config;
     this.#doc = doc;
+
+    this.#servicesView.typesFileName = config.typesFileName!;
   }
 
-  async #parseGet(pathKey: string, operationObject: OpenAPIV3.OperationObject) {
-    const ret = {
-      namespace: '',
-      summary: '',
-      path: '',
-      tags: '',
-      name: '',
-      paramsType: '',
-      method: '',
-      responseType: '',
-      requestPath: '',
-    };
-    ret.namespace = `NSGet${pathToPascalCase(pathKey)}`;
-    ret.summary = operationObject.summary as string;
+  #isParamPath(pathStr: string) {
+    return pathStr.indexOf('{id}') > -1;
   }
 
-  async #parsePost(
+  #resolveHasParams(operationObject: OpenAPIV3.OperationObject) {
+    if (!operationObject.parameters?.length) return false;
+    return true;
+  }
+
+  #resolveParamsType(
     pathKey: string,
+    method: keyof typeof EHttpMethod,
     operationObject: OpenAPIV3.OperationObject,
   ) {
-    const ret = {
-      namespace: '',
-      summary: '',
-      path: '',
-      tags: '',
-      name: '',
-      paramsType: '',
-      method: '',
-      responseType: '',
-      requestPath: '',
-    };
-    ret.namespace = `NSPost${pathToPascalCase(pathKey)}`;
-    ret.summary = operationObject.summary as string;
+    if (!operationObject.parameters?.length) return 'undefined';
+    if (this.#isParamPath(pathKey)) {
+      return (
+        (operationObject.parameters as OpenAPIV3.ParameterObject[])[0]
+          ?.schema as OpenAPIV3.NonArraySchemaObject
+      )?.type as OpenAPIV3.NonArraySchemaObjectType;
+    }
+    return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.Params`;
   }
 
-  async #parsePut(pathKey: string, operationObject: OpenAPIV3.OperationObject) {
-    const ret = {
-      namespace: '',
-      summary: '',
-      path: '',
-      tags: '',
-      name: '',
-      paramsType: '',
-      method: '',
-      responseType: '',
-      requestPath: '',
-    };
-    ret.namespace = `NSPut${pathToPascalCase(pathKey)}`;
-    ret.summary = operationObject.summary as string;
+  #resolveHasBody(operationObject: OpenAPIV3.OperationObject) {
+    if (!operationObject.requestBody) return false;
+    return true;
   }
 
-  async #parseDelete(
+  #resolveBodyType(
     pathKey: string,
+    method: keyof typeof EHttpMethod,
     operationObject: OpenAPIV3.OperationObject,
   ) {
-    const ret = {
+    if (!operationObject.requestBody) return 'undefined';
+    return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.Body`;
+  }
+
+  #resolveHasResponse() {
+    return true; // 目前 response 默认为true
+  }
+
+  #resolveResponseType(
+    pathKey: string,
+    method: keyof typeof EHttpMethod,
+    operationObject: OpenAPIV3.OperationObject,
+  ) {
+    if (!operationObject.responses.default) return 'void';
+    return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.Res`;
+  }
+
+  #parseServiceItem(
+    pathKey: string,
+    method: keyof typeof EHttpMethod,
+    operationObject: OpenAPIV3.OperationObject,
+  ) {
+    if (this.#config.baseURL) {
+      // eslint-disable-next-line no-param-reassign
+      pathKey = pathKey.replace(this.#config.baseURL!, '');
+    }
+    const item: IServicesViewListItem = {
       namespace: '',
       summary: '',
       path: '',
-      tags: '',
+      tags: [],
       name: '',
+      isParamPath: false,
+      hasParams: false,
       paramsType: '',
+      hasBody: false,
+      bodyType: '',
       method: '',
+      hasResponse: '',
       responseType: '',
       requestPath: '',
     };
-    ret.namespace = `NSDelete${pathToPascalCase(pathKey)}`;
-    ret.summary = operationObject.summary as string;
+    item.namespace = `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}`;
+    item.summary = operationObject.summary as string;
+    item.path = pathKey;
+    item.tags = operationObject.tags as string[];
+    item.name = `${method}${removeBraces(pathToPascalCase(pathKey))}`;
+    item.hasParams = this.#resolveHasParams(operationObject);
+    item.paramsType = this.#resolveParamsType(pathKey, method, operationObject);
+    item.hasBody = this.#resolveHasBody(operationObject);
+    item.bodyType = this.#resolveBodyType(pathKey, method, operationObject);
+    item.method = method;
+    item.hasResponse = this.#resolveHasResponse();
+    item.responseType = this.#resolveResponseType(
+      pathKey,
+      method,
+      operationObject,
+    );
+    item.requestPath = pathKey;
+
+    this.#servicesView.list.push(item);
+  }
+
+  #parseTypes(
+    pathKey: string,
+    method: keyof typeof EHttpMethod,
+    operationObject: OpenAPIV3.OperationObject,
+  ) {
+    const item: IServicesViewListItem = {
+      namespace: '',
+      summary: '',
+      path: '',
+      tags: [],
+      name: '',
+      isParamPath: false,
+      hasParams: false,
+      paramsType: '',
+      hasBody: false,
+      bodyType: '',
+      method: '',
+      hasResponse: '',
+      responseType: '',
+      requestPath: '',
+    };
+    item.namespace = `NS${pathToPascalCase(method)}${pathToPascalCase(pathKey)}`;
+    item.summary = operationObject.summary as string;
+    item.path = pathKey;
+    item.tags = operationObject.tags as string[];
+    item.name = `${method}${pathToPascalCase(pathKey)}`;
+    item.hasParams = true;
+    item.hasBody = true;
+    item.paramsType = `NS${pathToPascalCase(method)}${pathToPascalCase(pathKey)}.Req`;
+    item.method = method;
+    item.hasResponse = false;
+    item.responseType = `NS${pathToPascalCase(method)}${pathToPascalCase(pathKey)}.Res`;
+    item.requestPath = '';
+
+    this.#typesVies.list.push(item);
   }
 
   async #parse() {
@@ -114,41 +187,25 @@ export class Generator {
       pathKeys = pathKeys.filter((i) => !excludePathsSet.has(i));
     }
 
-    if (this.#config.baseURL) {
-      pathKeys = pathKeys.map((i) => i.replace(this.#config.baseURL!, ''));
-    }
-
     for (let i = 0; i < pathKeys.length; i += 1) {
+      const pathKey = pathKeys[i];
       const pathItemObject = this.#doc.paths[
-        pathKeys[i]
+        pathKey
       ] as OpenAPIV3.PathItemObject;
-      if (pathItemObject[EHttpMethod.get]) {
-        const getObject = this.#parseGet(
-          pathKeys[i],
-          pathItemObject[EHttpMethod.get],
+      for (let j = 0; j < Object.keys(pathItemObject).length; j += 1) {
+        const operationObject = pathItemObject[
+          Object.keys(pathItemObject)[j] as keyof typeof EHttpMethod
+        ] as OpenAPIV3.OperationObject;
+        this.#parseServiceItem(
+          pathKey,
+          Object.keys(pathItemObject)[j] as keyof typeof EHttpMethod,
+          operationObject,
         );
-        this.#servicesView.push(getObject);
-      }
-      if (pathItemObject[EHttpMethod.post]) {
-        const getObject = this.#parsePost(
-          pathKeys[i],
-          pathItemObject[EHttpMethod.post],
-        );
-        this.#servicesView.push(getObject);
-      }
-      if (pathItemObject[EHttpMethod.put]) {
-        const getObject = this.#parsePut(
-          pathKeys[i],
-          pathItemObject[EHttpMethod.put],
-        );
-        this.#servicesView.push(getObject);
-      }
-      if (pathItemObject[EHttpMethod.delete]) {
-        const getObject = this.#parseDelete(
-          pathKeys[i],
-          pathItemObject[EHttpMethod.delete],
-        );
-        this.#servicesView.push(getObject);
+        // this.#parseTypes(
+        //   pathKey,
+        //   Object.keys(pathItemObject)[j] as keyof typeof EHttpMethod,
+        //   operationObject,
+        // );
       }
     }
   }
@@ -160,7 +217,6 @@ export class Generator {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    const fileOptions = { encoding: 'utf-8' } as WriteFileOptions;
     const servicesPath = path.join(
       this.#config.outputDir!,
       this.#config.servicesFileName!,
@@ -175,32 +231,67 @@ export class Generator {
     }
     const servicesHeaderTemplate = fs.readFileSync(
       servicesHeaderPath,
-      fileOptions,
+      this.#fileOptions,
     );
+
     const servicesHeaderText = Mustache.render(
       servicesHeaderTemplate as string,
       {},
     );
-    fs.writeFileSync(servicesPath, servicesHeaderText, fileOptions);
 
     const servicesItemsPath = path.join(templateDir, 'services-items.mustache');
+    const servicesItemArgsPath = path.join(
+      templateDir,
+      'services-item-args.mustache',
+    );
+    const servicesResPath = path.join(
+      templateDir,
+      'services-item-res.mustache',
+    );
+    const servicesItemDataPath = path.join(
+      templateDir,
+      'services-item-data.mustache',
+    );
     if (!fs.existsSync(servicesItemsPath)) {
       throw new Error(`模版文件${servicesItemsPath}不存在`);
     }
     const servicesItemsTemplate = fs.readFileSync(
       servicesItemsPath,
-      fileOptions,
+      this.#fileOptions,
     );
+    const servicesItemArgsTemplate = fs.readFileSync(
+      servicesItemArgsPath,
+      this.#fileOptions,
+    );
+    const servicesItemResTemplate = fs.readFileSync(
+      servicesResPath,
+      this.#fileOptions,
+    );
+    const servicesItemDataTemplate = fs.readFileSync(
+      servicesItemDataPath,
+      this.#fileOptions,
+    );
+    const partials = {
+      servicesItemArgs: servicesItemArgsTemplate,
+      servicesItemRes: servicesItemResTemplate,
+      servicesItemData: servicesItemDataTemplate,
+    };
     const servicesItemsText = Mustache.render(
       servicesItemsTemplate as string,
-      {},
+      this.#servicesView,
+      partials as PartialsOrLookupFn,
     );
+
+    console.info('this.#servicesView', this.#servicesView);
+
     const formatedText = await prettier.format(
       `${servicesHeaderText}${servicesItemsText}`,
       prettierOptions,
     );
 
-    fs.writeFileSync(servicesPath, formatedText, fileOptions);
+    console.info('formatedText', formatedText);
+
+    fs.writeFileSync(servicesPath, formatedText, this.#fileOptions);
   }
 
   async #writeServicesTypes() {
@@ -210,7 +301,6 @@ export class Generator {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    const fileOptions = { encoding: 'utf-8' } as WriteFileOptions;
     const typesPath = path.join(
       this.#config.outputDir!,
       this.#config.typesFileName!,
@@ -223,9 +313,12 @@ export class Generator {
     if (!fs.existsSync(typesHeaderPath)) {
       throw new Error(`模版文件${typesHeaderPath}不存在`);
     }
-    const typesHeaderTemplate = fs.readFileSync(typesHeaderPath, fileOptions);
+    const typesHeaderTemplate = fs.readFileSync(
+      typesHeaderPath,
+      this.#fileOptions,
+    );
     const typesHeaderText = Mustache.render(typesHeaderTemplate as string, {});
-    fs.writeFileSync(typesPath, typesHeaderText, fileOptions);
+    fs.writeFileSync(typesPath, typesHeaderText, this.#fileOptions);
 
     const typesItemsPath = path.join(
       templateDir,
@@ -234,19 +327,22 @@ export class Generator {
     if (!fs.existsSync(typesItemsPath)) {
       throw new Error(`模版文件${typesItemsPath}不存在`);
     }
-    const typesItemsTemplate = fs.readFileSync(typesItemsPath, fileOptions);
+    const typesItemsTemplate = fs.readFileSync(
+      typesItemsPath,
+      this.#fileOptions,
+    );
     const typesItemsText = Mustache.render(typesItemsTemplate as string, {});
     const formatedText = await prettier.format(
       `${typesHeaderText}${typesItemsText}`,
       prettierOptions,
     );
 
-    fs.writeFileSync(typesPath, formatedText, fileOptions);
+    fs.writeFileSync(typesPath, formatedText, this.#fileOptions);
   }
 
   init() {
     this.#parse();
     this.#writeServices();
-    this.#writeServicesTypes();
+    // this.#writeServicesTypes();
   }
 }
