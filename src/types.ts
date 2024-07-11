@@ -88,12 +88,7 @@ export interface ITypesViewListItem {
   path: string;
   tags: string;
   isParamPath: boolean; // 是否为参数路径 形如/a/b/{id}
-  hasParams: boolean;
-  paramsView: OpenAPIV3.ParameterObject[];
-  hasBody: boolean;
-  bodyType: any;
-  hasResponse: any;
-  responseType: any;
+  typeText: string;
 }
 
 export interface ITypesView {

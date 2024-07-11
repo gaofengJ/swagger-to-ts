@@ -25,3 +25,28 @@ export const pathToPascalCase = (path: string): string => {
 export const removeBraces = (str: string): string => {
   return str.replace(/\{.*\}/, '');
 };
+
+/**
+ * 根据给定的路径查找对象
+ * @param data 给定数据
+ * @param path 给定路径
+ * @returns 查找到的对象
+ */
+export const findObjectByPath = (data: any, path: string) => {
+  // 移除路径前的 `#/`
+  const cleanPath = path.replace(/^#\//, '');
+
+  // 将路径拆分成数组
+  const parts = cleanPath.split('/');
+
+  // 遍历路径部分来查找对象
+  let current = data;
+  for (let i = 0; i < parts.length; i += 1) {
+    const part = parts[i];
+    if (current[part] === undefined) {
+      throw new Error(`Path not found: ${path}`);
+    }
+    current = current[part];
+  }
+  return current;
+};

@@ -1,14 +1,8 @@
-{{#isParamPath}}
-{{/isParamPath}}
-{{^isParamPath}}
-  {{#hasParams}}
-    export interface IParams {
-      {{#paramsView}}
-        /**
-          * {{#description}}{{description}}{{/description}}{{^description}}{{name}}{{/description}}
-          */
-        {{name}}{{^required}}?{{/required}}: {{schema.type}};
-      {{/paramsView}}
-    }
-  {{/hasParams}}
-{{/isParamPath}}
+export interface IParams {
+  {{#paramsList}}
+      /**
+        * {{#description}}{{description}}{{/description}}{{^description}}{{name}}{{/description}}
+        */
+    {{name}}{{^required}}?{{/required}}: {{schema.type}};
+  {{/paramsList}}
+}

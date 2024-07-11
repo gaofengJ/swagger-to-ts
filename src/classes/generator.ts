@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import type { WriteFileOptions } from 'fs';
 import * as path from 'path';
 import * as Mustache from 'mustache';
+import { compile } from 'json-schema-to-typescript';
 import * as prettier from 'prettier';
 import type { OpenAPIV3 } from 'openapi-types';
 
@@ -14,7 +15,7 @@ import type {
 } from '@/types';
 import { EHttpMethod } from '@/types';
 import { fileOptions, prettierOptions } from '@/configs';
-import { pathToPascalCase, removeBraces } from '@/utils';
+import { findObjectByPath, pathToPascalCase, removeBraces } from '@/utils';
 import type { PartialsOrLookupFn } from 'mustache';
 
 export class Generator {
@@ -64,17 +65,6 @@ export class Generator {
     return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.IParams`;
   }
 
-  #resolveParamsView(
-    pathKey: string,
-    operationObject: OpenAPIV3.OperationObject,
-  ) {
-    if (!operationObject.parameters?.length) return [];
-    if (this.#isParamPath(pathKey)) return [];
-    return operationObject.parameters.filter(
-      (i: OpenAPIV3.ParameterObject) => i.in === 'query',
-    ) as OpenAPIV3.ParameterObject[];
-  }
-
   #resolveHasBody(operationObject: OpenAPIV3.OperationObject) {
     if (!operationObject.requestBody) return false;
     return true;
@@ -101,6 +91,77 @@ export class Generator {
   ) {
     if (!operationObject.responses.default) return 'void';
     return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.IRes`;
+  }
+
+  #resolveParamsTypeText(
+    pathKey: string,
+    operationObject: OpenAPIV3.OperationObject,
+  ) {
+    if (!operationObject.parameters?.length) return '';
+    if (this.#isParamPath(pathKey)) return '';
+
+    const templateDir = this.#config.templateDir as string;
+    const typesItemParamsPath = path.join(
+      templateDir,
+      'services-types-item-params.mustache',
+    );
+    const typesItemParamsTemplate = fs.readFileSync(
+      typesItemParamsPath,
+      this.#fileOptions,
+    );
+
+    const paramsList = operationObject.parameters.filter(
+      (i: OpenAPIV3.ParameterObject) => i.in === 'query',
+    ) as OpenAPIV3.ParameterObject[];
+    const paramsTypeText = Mustache.render(typesItemParamsTemplate as string, {
+      paramsList,
+    });
+    return paramsTypeText;
+  }
+
+  async #resolveBodyTypeText(operationObject: OpenAPIV3.OperationObject) {
+    const componentUrl = (
+      (operationObject.requestBody as OpenAPIV3.RequestBodyObject)?.content?.[
+        'application/json'
+      ]?.schema as OpenAPIV3.ReferenceObject
+    )?.$ref;
+    if (!componentUrl) return '';
+    const schema = findObjectByPath(this.#doc, componentUrl);
+    const bodyTypeText = await compile(schema, 'IBody', {
+      bannerComment: '',
+      unknownAny: false,
+    });
+    return bodyTypeText;
+  }
+
+  async #resolveResTypeText(operationObject: OpenAPIV3.OperationObject) {
+    if (!operationObject.responses.default) return '';
+    return '';
+    // const componentUrl = (
+    //   operationObject.responses?.content?.['application/json']
+    //     ?.schema as OpenAPIV3.ReferenceObject
+    // )?.$ref;
+    // if (!componentUrl) return '';
+    // const schema = findObjectByPath(this.#doc, componentUrl);
+    // const resTypeText = await compile(schema, 'IBody', {
+    //   bannerComment: '',
+    //   unknownAny: false,
+    // });
+    // return resTypeText;
+  }
+
+  async #resolveTypeText(
+    pathKey: string,
+    method: keyof typeof EHttpMethod,
+    operationObject: OpenAPIV3.OperationObject,
+  ) {
+    const paramsTypeText = this.#resolveParamsTypeText(
+      pathKey,
+      operationObject,
+    );
+    const bodyTypeText = await this.#resolveBodyTypeText(operationObject);
+    const resTypeText = await this.#resolveResTypeText(operationObject);
+    return `${paramsTypeText}${bodyTypeText}${resTypeText}`;
   }
 
   #parseServiceItem(
@@ -150,7 +211,7 @@ export class Generator {
     this.#servicesView.list.push(item);
   }
 
-  #parseTypeItem(
+  async #parseTypeItem(
     pathKey: string,
     method: keyof typeof EHttpMethod,
     operationObject: OpenAPIV3.OperationObject,
@@ -161,25 +222,14 @@ export class Generator {
       path: '',
       tags: '',
       isParamPath: false,
-      hasParams: false,
-      paramsView: [],
-      hasBody: false,
-      bodyType: '',
-      hasResponse: '',
-      responseType: '',
+      typeText: '',
     };
     item.namespace = `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}`;
     item.summary = operationObject.summary as string;
     item.path = pathKey;
     item.tags = operationObject.tags?.join(',') as string;
     item.isParamPath = this.#isParamPath(pathKey);
-    item.hasParams = this.#resolveHasParams(operationObject);
-    item.paramsView = this.#resolveParamsView(pathKey, operationObject);
-    item.hasBody = this.#resolveHasBody(operationObject);
-    item.bodyType = this.#resolveHasBody(operationObject); // TODO
-    item.hasResponse = this.#resolveHasResponse(operationObject);
-    // TODO
-    item.responseType = this.#resolveResponseType(
+    item.typeText = await this.#resolveTypeText(
       pathKey,
       method,
       operationObject,
@@ -223,7 +273,8 @@ export class Generator {
           Object.keys(pathItemObject)[j] as keyof typeof EHttpMethod,
           operationObject,
         );
-        this.#parseTypeItem(
+        // eslint-disable-next-line no-await-in-loop
+        await this.#parseTypeItem(
           pathKey,
           Object.keys(pathItemObject)[j] as keyof typeof EHttpMethod,
           operationObject,
@@ -338,43 +389,13 @@ export class Generator {
       templateDir,
       'services-types-items.mustache',
     );
-    const typesItemParamsPath = path.join(
-      templateDir,
-      'services-types-item-params.mustache',
-    );
-    const typesBodyPath = path.join(
-      templateDir,
-      'services-types-item-body.mustache',
-    );
-    const typesItemResPath = path.join(
-      templateDir,
-      'services-types-item-res.mustache',
-    );
     const typesItemsTemplate = fs.readFileSync(
       typesItemsPath,
       this.#fileOptions,
     );
-    const typesItemParamsTemplate = fs.readFileSync(
-      typesItemParamsPath,
-      this.#fileOptions,
-    );
-    const typesItemBodyTemplate = fs.readFileSync(
-      typesBodyPath,
-      this.#fileOptions,
-    );
-    const typesItemResTemplate = fs.readFileSync(
-      typesItemResPath,
-      this.#fileOptions,
-    );
-    const partials = {
-      typesItemParams: typesItemParamsTemplate,
-      typesItemBody: typesItemBodyTemplate,
-      typesItemRes: typesItemResTemplate,
-    };
     const typesItemsText = Mustache.render(
       typesItemsTemplate as string,
       this.#typesView,
-      partials as PartialsOrLookupFn,
     );
     const formatedText = await prettier.format(
       `${typesHeaderText}${typesItemsText}`,
@@ -384,8 +405,8 @@ export class Generator {
     fs.writeFileSync(typesPath, formatedText, this.#fileOptions);
   }
 
-  init() {
-    this.#parse();
+  async init() {
+    await this.#parse();
     this.#writeServices();
     this.#writeTypes();
   }
