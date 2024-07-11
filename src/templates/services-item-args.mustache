@@ -1,11 +1,11 @@
-{{#hasParams}}
-  {{#isParamPath}}
-    id: {{paramsType}}, 
-  {{/isParamPath}}
-  {{^isParamPath}}
+{{#isParamPath}}
+  id: {{paramsType}}, 
+{{/isParamPath}}
+{{^isParamPath}}
+  {{#hasParams}}
     params: {{paramsType}}, 
-  {{/isParamPath}}
-{{/hasParams}}
+  {{/hasParams}}
+{{/isParamPath}}
 {{#hasBody}}
   body: {{bodyType}}, 
 {{/hasBody}}
