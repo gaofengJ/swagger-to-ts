@@ -1,4 +1,4 @@
-{{list}}
+{{#list}}
 /**
  * 类型名称：{{summary}}
  *
@@ -6,7 +6,8 @@
  * @description 接口分组：{{tags}}
  */
 export namespace {{namespace}} {
-  {{> typesItemReq}}
+  {{> typesItemParams}}
+  {{> typesItemBody}}
   {{> typesItemRes}}
 }
 {{/list}}

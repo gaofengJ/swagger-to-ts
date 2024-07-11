@@ -64,6 +64,17 @@ export class Generator {
     return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.IParams`;
   }
 
+  #resolveParamsView(
+    pathKey: string,
+    operationObject: OpenAPIV3.OperationObject,
+  ) {
+    if (!operationObject.parameters?.length) return [];
+    if (this.#isParamPath(pathKey)) return [];
+    return operationObject.parameters.filter(
+      (i: OpenAPIV3.ParameterObject) => i.in === 'query',
+    ) as OpenAPIV3.ParameterObject[];
+  }
+
   #resolveHasBody(operationObject: OpenAPIV3.OperationObject) {
     if (!operationObject.requestBody) return false;
     return true;
@@ -151,7 +162,7 @@ export class Generator {
       tags: '',
       isParamPath: false,
       hasParams: false,
-      paramsType: '',
+      paramsView: [],
       hasBody: false,
       bodyType: '',
       hasResponse: '',
@@ -162,8 +173,8 @@ export class Generator {
     item.path = pathKey;
     item.tags = operationObject.tags?.join(',') as string;
     item.isParamPath = this.#isParamPath(pathKey);
-    item.hasParams = this.#isParamPath(pathKey);
-    item.paramsType = this.#resolveParamsType(pathKey, method, operationObject); // TODO
+    item.hasParams = this.#resolveHasParams(operationObject);
+    item.paramsView = this.#resolveParamsView(pathKey, operationObject);
     item.hasBody = this.#resolveHasBody(operationObject);
     item.bodyType = this.#resolveHasBody(operationObject); // TODO
     item.hasResponse = this.#resolveHasResponse(operationObject);
@@ -263,9 +274,6 @@ export class Generator {
       templateDir,
       'services-item-data.mustache',
     );
-    if (!fs.existsSync(servicesItemsPath)) {
-      throw new Error(`模版文件${servicesItemsPath}不存在`);
-    }
     const servicesItemsTemplate = fs.readFileSync(
       servicesItemsPath,
       this.#fileOptions,
@@ -301,7 +309,7 @@ export class Generator {
     fs.writeFileSync(servicesPath, formatedText, this.#fileOptions);
   }
 
-  async #writeServicesTypes() {
+  async #writeTypes() {
     const outputDir = this.#config.outputDir as string;
     const templateDir = this.#config.templateDir as string;
     if (!fs.existsSync(outputDir)) {
@@ -324,25 +332,49 @@ export class Generator {
       typesHeaderPath,
       this.#fileOptions,
     );
-    const typesHeaderText = Mustache.render(
-      typesHeaderTemplate as string,
-      this.#typesView,
-    );
+    const typesHeaderText = Mustache.render(typesHeaderTemplate as string, {});
 
     const typesItemsPath = path.join(
       templateDir,
       'services-types-items.mustache',
     );
-    if (!fs.existsSync(typesItemsPath)) {
-      throw new Error(`模版文件${typesItemsPath}不存在`);
-    }
+    const typesItemParamsPath = path.join(
+      templateDir,
+      'services-types-item-params.mustache',
+    );
+    const typesBodyPath = path.join(
+      templateDir,
+      'services-types-item-body.mustache',
+    );
+    const typesItemResPath = path.join(
+      templateDir,
+      'services-types-item-res.mustache',
+    );
     const typesItemsTemplate = fs.readFileSync(
       typesItemsPath,
       this.#fileOptions,
     );
+    const typesItemParamsTemplate = fs.readFileSync(
+      typesItemParamsPath,
+      this.#fileOptions,
+    );
+    const typesItemBodyTemplate = fs.readFileSync(
+      typesBodyPath,
+      this.#fileOptions,
+    );
+    const typesItemResTemplate = fs.readFileSync(
+      typesItemResPath,
+      this.#fileOptions,
+    );
+    const partials = {
+      typesItemParams: typesItemParamsTemplate,
+      typesItemBody: typesItemBodyTemplate,
+      typesItemRes: typesItemResTemplate,
+    };
     const typesItemsText = Mustache.render(
       typesItemsTemplate as string,
       this.#typesView,
+      partials as PartialsOrLookupFn,
     );
     const formatedText = await prettier.format(
       `${typesHeaderText}${typesItemsText}`,
@@ -355,6 +387,6 @@ export class Generator {
   init() {
     this.#parse();
     this.#writeServices();
-    this.#writeServicesTypes();
+    this.#writeTypes();
   }
 }

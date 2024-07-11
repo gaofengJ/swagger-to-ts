@@ -1,3 +1,5 @@
+import { OpenAPIV3 } from 'openapi-types';
+
 export interface IConfig {
   /**
    * Swagger 文档路径，例如：http://127.0.0.1:3000/api-docs-json
@@ -87,7 +89,7 @@ export interface ITypesViewListItem {
   tags: string;
   isParamPath: boolean; // 是否为参数路径 形如/a/b/{id}
   hasParams: boolean;
-  paramsType: any;
+  paramsView: OpenAPIV3.ParameterObject[];
   hasBody: boolean;
   bodyType: any;
   hasResponse: any;
