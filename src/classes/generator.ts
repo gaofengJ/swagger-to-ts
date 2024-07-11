@@ -113,6 +113,7 @@ export class Generator {
     item.path = pathKey;
     item.tags = operationObject.tags as string[];
     item.name = `${method}${removeBraces(pathToPascalCase(pathKey))}`;
+    item.isParamPath = this.#isParamPath(pathKey);
     item.hasParams = this.#resolveHasParams(operationObject);
     item.paramsType = this.#resolveParamsType(pathKey, method, operationObject);
     item.hasBody = this.#resolveHasBody(operationObject);
