@@ -282,14 +282,10 @@ export class Generator {
       partials as PartialsOrLookupFn,
     );
 
-    console.info('this.#servicesView', this.#servicesView);
-
     const formatedText = await prettier.format(
       `${servicesHeaderText}${servicesItemsText}`,
       prettierOptions,
     );
-
-    console.info('formatedText', formatedText);
 
     fs.writeFileSync(servicesPath, formatedText, this.#fileOptions);
   }
