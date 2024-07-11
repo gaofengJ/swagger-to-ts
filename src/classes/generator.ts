@@ -96,7 +96,7 @@ export class Generator {
       namespace: '',
       summary: '',
       path: '',
-      tags: [],
+      tags: '',
       name: '',
       isParamPath: false,
       hasParams: false,
@@ -111,7 +111,7 @@ export class Generator {
     item.namespace = `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}`;
     item.summary = operationObject.summary as string;
     item.path = pathKey;
-    item.tags = operationObject.tags as string[];
+    item.tags = operationObject.tags?.join(',') as string;
     item.name = `${method}${removeBraces(pathToPascalCase(pathKey))}`;
     item.isParamPath = this.#isParamPath(pathKey);
     item.hasParams = this.#resolveHasParams(operationObject);
@@ -139,7 +139,7 @@ export class Generator {
       namespace: '',
       summary: '',
       path: '',
-      tags: [],
+      tags: '',
       name: '',
       isParamPath: false,
       hasParams: false,
@@ -154,7 +154,7 @@ export class Generator {
     item.namespace = `NS${pathToPascalCase(method)}${pathToPascalCase(pathKey)}`;
     item.summary = operationObject.summary as string;
     item.path = pathKey;
-    item.tags = operationObject.tags as string[];
+    item.tags = operationObject.tags?.join(',') as string;
     item.name = `${method}${pathToPascalCase(pathKey)}`;
     item.hasParams = true;
     item.hasBody = true;

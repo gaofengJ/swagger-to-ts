@@ -62,7 +62,7 @@ export interface IServicesViewListItem {
   namespace: string;
   summary: string;
   path: string;
-  tags: string[];
+  tags: string;
   name: string;
   isParamPath: boolean; // 是否为参数路径 形如/a/b/{id}
   hasParams: boolean;

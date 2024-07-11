@@ -7,8 +7,8 @@ import type {
 /**
  * 接口名称：{{summary}}
  *
- * @description 接口路径：'{{{path}}}'
- * @description 接口分组：{{tags.join(',')}}
+ * @description 接口路径：{{{path}}}
+ * @description 接口分组：{{tags}}
  */
 export const {{name}} = ({{> servicesItemArgs}}config: RequestConfig = {},) => axios.{{method}}<{{> servicesItemRes}}>('{{{requestPath}}}',{{> servicesItemData}}config);
 {{/list}}
