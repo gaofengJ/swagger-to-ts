@@ -1,11 +1,12 @@
 {{list}}
 /**
- * 类型名称：{{label}}
+ * 类型名称：{{summary}}
  *
- * @description 接口路径：{{path}}
+ * @description 接口路径：{{{path}}}
  * @description 接口分组：{{tags}}
  */
 export namespace {{namespace}} {
-  {{typeText}}
+  {{> typesItemReq}}
+  {{> typesItemRes}}
 }
 {{/list}}

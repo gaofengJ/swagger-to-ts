@@ -5,7 +5,13 @@ import * as Mustache from 'mustache';
 import * as prettier from 'prettier';
 import type { OpenAPIV3 } from 'openapi-types';
 
-import type { IServicesView, IConfig, IServicesViewListItem } from '@/types';
+import type {
+  IServicesView,
+  IConfig,
+  IServicesViewListItem,
+  ITypesView,
+  ITypesViewListItem,
+} from '@/types';
 import { EHttpMethod } from '@/types';
 import { fileOptions, prettierOptions } from '@/configs';
 import { pathToPascalCase, removeBraces } from '@/utils';
@@ -23,7 +29,9 @@ export class Generator {
     typesFileName: '',
   };
 
-  #typesVies: any;
+  #typesView: ITypesView = {
+    list: [],
+  };
 
   constructor(config: IConfig, doc: OpenAPIV3.Document) {
     this.#config = config;
@@ -53,7 +61,7 @@ export class Generator {
           ?.schema as OpenAPIV3.NonArraySchemaObject
       )?.type as OpenAPIV3.NonArraySchemaObjectType;
     }
-    return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.Params`;
+    return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.IParams`;
   }
 
   #resolveHasBody(operationObject: OpenAPIV3.OperationObject) {
@@ -67,11 +75,12 @@ export class Generator {
     operationObject: OpenAPIV3.OperationObject,
   ) {
     if (!operationObject.requestBody) return 'undefined';
-    return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.Body`;
+    return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.IBody`;
   }
 
-  #resolveHasResponse() {
-    return true; // 目前 response 默认为true
+  #resolveHasResponse(operationObject: OpenAPIV3.OperationObject) {
+    if (operationObject.responses.default) return true;
+    return false;
   }
 
   #resolveResponseType(
@@ -80,7 +89,7 @@ export class Generator {
     operationObject: OpenAPIV3.OperationObject,
   ) {
     if (!operationObject.responses.default) return 'void';
-    return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.Res`;
+    return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.IRes`;
   }
 
   #parseServiceItem(
@@ -104,7 +113,7 @@ export class Generator {
       hasBody: false,
       bodyType: '',
       method: '',
-      hasResponse: '',
+      hasResponse: false,
       responseType: '',
       requestPath: '',
     };
@@ -119,7 +128,7 @@ export class Generator {
     item.hasBody = this.#resolveHasBody(operationObject);
     item.bodyType = this.#resolveBodyType(pathKey, method, operationObject);
     item.method = method;
-    item.hasResponse = this.#resolveHasResponse();
+    item.hasResponse = this.#resolveHasResponse(operationObject);
     item.responseType = this.#resolveResponseType(
       pathKey,
       method,
@@ -130,41 +139,42 @@ export class Generator {
     this.#servicesView.list.push(item);
   }
 
-  #parseTypes(
+  #parseTypeItem(
     pathKey: string,
     method: keyof typeof EHttpMethod,
     operationObject: OpenAPIV3.OperationObject,
   ) {
-    const item: IServicesViewListItem = {
+    const item: ITypesViewListItem = {
       namespace: '',
       summary: '',
       path: '',
       tags: '',
-      name: '',
       isParamPath: false,
       hasParams: false,
       paramsType: '',
       hasBody: false,
       bodyType: '',
-      method: '',
       hasResponse: '',
       responseType: '',
-      requestPath: '',
     };
-    item.namespace = `NS${pathToPascalCase(method)}${pathToPascalCase(pathKey)}`;
+    item.namespace = `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}`;
     item.summary = operationObject.summary as string;
     item.path = pathKey;
     item.tags = operationObject.tags?.join(',') as string;
-    item.name = `${method}${pathToPascalCase(pathKey)}`;
-    item.hasParams = true;
-    item.hasBody = true;
-    item.paramsType = `NS${pathToPascalCase(method)}${pathToPascalCase(pathKey)}.Req`;
-    item.method = method;
-    item.hasResponse = false;
-    item.responseType = `NS${pathToPascalCase(method)}${pathToPascalCase(pathKey)}.Res`;
-    item.requestPath = '';
+    item.isParamPath = this.#isParamPath(pathKey);
+    item.hasParams = this.#isParamPath(pathKey);
+    item.paramsType = this.#resolveParamsType(pathKey, method, operationObject); // TODO
+    item.hasBody = this.#resolveHasBody(operationObject);
+    item.bodyType = this.#resolveHasBody(operationObject); // TODO
+    item.hasResponse = this.#resolveHasResponse(operationObject);
+    // TODO
+    item.responseType = this.#resolveResponseType(
+      pathKey,
+      method,
+      operationObject,
+    );
 
-    this.#typesVies.list.push(item);
+    this.#typesView.list.push(item);
   }
 
   async #parse() {
@@ -202,11 +212,11 @@ export class Generator {
           Object.keys(pathItemObject)[j] as keyof typeof EHttpMethod,
           operationObject,
         );
-        // this.#parseTypes(
-        //   pathKey,
-        //   Object.keys(pathItemObject)[j] as keyof typeof EHttpMethod,
-        //   operationObject,
-        // );
+        this.#parseTypeItem(
+          pathKey,
+          Object.keys(pathItemObject)[j] as keyof typeof EHttpMethod,
+          operationObject,
+        );
       }
     }
   }
@@ -314,8 +324,10 @@ export class Generator {
       typesHeaderPath,
       this.#fileOptions,
     );
-    const typesHeaderText = Mustache.render(typesHeaderTemplate as string, {});
-    fs.writeFileSync(typesPath, typesHeaderText, this.#fileOptions);
+    const typesHeaderText = Mustache.render(
+      typesHeaderTemplate as string,
+      this.#typesView,
+    );
 
     const typesItemsPath = path.join(
       templateDir,
@@ -328,7 +340,10 @@ export class Generator {
       typesItemsPath,
       this.#fileOptions,
     );
-    const typesItemsText = Mustache.render(typesItemsTemplate as string, {});
+    const typesItemsText = Mustache.render(
+      typesItemsTemplate as string,
+      this.#typesView,
+    );
     const formatedText = await prettier.format(
       `${typesHeaderText}${typesItemsText}`,
       prettierOptions,
@@ -340,6 +355,6 @@ export class Generator {
   init() {
     this.#parse();
     this.#writeServices();
-    // this.#writeServicesTypes();
+    this.#writeServicesTypes();
   }
 }

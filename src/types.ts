@@ -66,16 +66,34 @@ export interface IServicesViewListItem {
   name: string;
   isParamPath: boolean; // 是否为参数路径 形如/a/b/{id}
   hasParams: boolean;
-  paramsType: any;
+  paramsType: string;
   hasBody: boolean;
-  bodyType: any;
+  bodyType: string;
   method: string;
-  hasResponse: any;
-  responseType: any;
+  hasResponse: boolean;
+  responseType: string;
   requestPath: string;
 }
 
 export interface IServicesView {
   list: IServicesViewListItem[];
   typesFileName: string;
+}
+
+export interface ITypesViewListItem {
+  namespace: string;
+  summary: string;
+  path: string;
+  tags: string;
+  isParamPath: boolean; // 是否为参数路径 形如/a/b/{id}
+  hasParams: boolean;
+  paramsType: any;
+  hasBody: boolean;
+  bodyType: any;
+  hasResponse: any;
+  responseType: any;
+}
+
+export interface ITypesView {
+  list: ITypesViewListItem[];
 }
