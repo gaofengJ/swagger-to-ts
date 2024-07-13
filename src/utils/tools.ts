@@ -57,7 +57,7 @@ export const findObjectByPath = (data: any, path: string) => {
  * @param data 给丁数据
  * @param schema schema对象
  */
-export const replaceReference = (data: any, schema: any) => {
+export const replaceReferenceOfObject = (data: any, schema: any) => {
   const len = Object.keys(schema).length;
   for (let i = 0; i < len; i += 1) {
     const key = Object.keys(schema)[i];
@@ -67,8 +67,24 @@ export const replaceReference = (data: any, schema: any) => {
     }
     if (schema[key] instanceof Object) {
       // eslint-disable-next-line no-param-reassign
-      schema[key] = replaceReference(data, schema[key]);
+      schema[key] = replaceReferenceOfObject(data, schema[key]);
     }
+  }
+  return schema;
+};
+
+/**
+ * 为schema最外层添加required
+ * @param schema schema对象
+ * @returns 处理过的schema
+ */
+export const completeSchemaRequired = (schema: any) => {
+  if (schema.required?.length) return schema;
+  if (!(schema.properties instanceof Object)) return schema;
+  // eslint-disable-next-line no-param-reassign
+  schema.required = [];
+  for (let i = 0; i < Object.keys(schema.properties).length; i += 1) {
+    schema.required.push(Object.keys(schema.properties)[i]);
   }
   return schema;
 };

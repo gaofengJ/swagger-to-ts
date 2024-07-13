@@ -16,10 +16,11 @@ import type {
 import { EHttpMethod } from '@/types';
 import { fileOptions, prettierOptions } from '@/configs';
 import {
+  completeSchemaRequired,
   findObjectByPath,
   pathToPascalCase,
   removeBraces,
-  replaceReference,
+  replaceReferenceOfObject,
 } from '@/utils';
 import type { PartialsOrLookupFn } from 'mustache';
 
@@ -148,7 +149,8 @@ export class Generator {
       ).allOf?.[1] as OpenAPIV3.SchemaObject
     ).properties?.data as OpenAPIV3.SchemaObject;
     if (!schema) return '';
-    schema = replaceReference(this.#doc, schema);
+    schema = replaceReferenceOfObject(this.#doc, schema);
+    schema = completeSchemaRequired(schema);
     const resTypeText = await compile(schema, 'IRes', {
       bannerComment: '',
       unknownAny: false,
