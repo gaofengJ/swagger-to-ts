@@ -50,3 +50,25 @@ export const findObjectByPath = (data: any, path: string) => {
   }
   return current;
 };
+
+/**
+ * 遍历schema，将其中包含scheme的部分替换实际的描述对象
+ * @example 将"items": { "$ref": "#/components/schemas/DailyEntity" }中的 $ref替换成 DailyEntity 的描述对象
+ * @param data 给丁数据
+ * @param schema schema对象
+ */
+export const replaceReference = (data: any, schema: any) => {
+  const len = Object.keys(schema).length;
+  for (let i = 0; i < len; i += 1) {
+    const key = Object.keys(schema)[i];
+    if (key === '$ref') {
+      // eslint-disable-next-line no-param-reassign
+      schema = findObjectByPath(data, schema[key]);
+    }
+    if (schema[key] instanceof Object) {
+      // eslint-disable-next-line no-param-reassign
+      schema[key] = replaceReference(data, schema[key]);
+    }
+  }
+  return schema;
+};

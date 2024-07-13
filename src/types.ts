@@ -1,5 +1,3 @@
-import { OpenAPIV3 } from 'openapi-types';
-
 export interface IConfig {
   /**
    * Swagger 文档路径，例如：http://127.0.0.1:3000/api-docs-json

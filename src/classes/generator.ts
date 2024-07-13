@@ -15,7 +15,12 @@ import type {
 } from '@/types';
 import { EHttpMethod } from '@/types';
 import { fileOptions, prettierOptions } from '@/configs';
-import { findObjectByPath, pathToPascalCase, removeBraces } from '@/utils';
+import {
+  findObjectByPath,
+  pathToPascalCase,
+  removeBraces,
+  replaceReference,
+} from '@/utils';
 import type { PartialsOrLookupFn } from 'mustache';
 
 export class Generator {
@@ -136,23 +141,23 @@ export class Generator {
 
   async #resolveResTypeText(operationObject: OpenAPIV3.OperationObject) {
     if (!operationObject.responses.default) return '';
-    return '';
-    // const componentUrl = (
-    //   operationObject.responses?.content?.['application/json']
-    //     ?.schema as OpenAPIV3.ReferenceObject
-    // )?.$ref;
-    // if (!componentUrl) return '';
-    // const schema = findObjectByPath(this.#doc, componentUrl);
-    // const resTypeText = await compile(schema, 'IBody', {
-    //   bannerComment: '',
-    //   unknownAny: false,
-    // });
-    // return resTypeText;
+    let schema = (
+      (
+        (operationObject.responses.default as OpenAPIV3.ResponseObject)
+          ?.content?.['application/json']?.schema as OpenAPIV3.SchemaObject
+      ).allOf?.[1] as OpenAPIV3.SchemaObject
+    ).properties?.data as OpenAPIV3.SchemaObject;
+    if (!schema) return '';
+    schema = replaceReference(this.#doc, schema);
+    const resTypeText = await compile(schema, 'IRes', {
+      bannerComment: '',
+      unknownAny: false,
+    });
+    return resTypeText;
   }
 
   async #resolveTypeText(
     pathKey: string,
-    method: keyof typeof EHttpMethod,
     operationObject: OpenAPIV3.OperationObject,
   ) {
     const paramsTypeText = this.#resolveParamsTypeText(
@@ -229,11 +234,7 @@ export class Generator {
     item.path = pathKey;
     item.tags = operationObject.tags?.join(',') as string;
     item.isParamPath = this.#isParamPath(pathKey);
-    item.typeText = await this.#resolveTypeText(
-      pathKey,
-      method,
-      operationObject,
-    );
+    item.typeText = await this.#resolveTypeText(pathKey, operationObject);
 
     this.#typesView.list.push(item);
   }
