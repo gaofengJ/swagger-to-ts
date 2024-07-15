@@ -7,12 +7,10 @@
 export const pathToPascalCase = (path: string): string => {
   // 分割路径为各个部分
   const parts = path.split(/[-/]/);
-
   // 将每个部分的首字母大写，然后拼接在一起
   const pascalCase = parts
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join('');
-
   return pascalCase;
 };
 
@@ -35,10 +33,8 @@ export const removeBraces = (str: string): string => {
 export const findObjectByPath = (data: any, path: string) => {
   // 移除路径前的 `#/`
   const cleanPath = path.replace(/^#\//, '');
-
   // 将路径拆分成数组
   const parts = cleanPath.split('/');
-
   // 遍历路径部分来查找对象
   let current = data;
   for (let i = 0; i < parts.length; i += 1) {
