@@ -25,17 +25,30 @@ import {
 import type { PartialsOrLookupFn } from 'mustache';
 
 export class Generator {
+  /**
+   * 配置对象
+   */
   #config: IConfig;
 
+  /**
+   * Swagger 文档对象
+   */
   #doc: OpenAPIV3.Document;
 
+  /** 文件读写选项 */
   #fileOptions: WriteFileOptions = fileOptions;
 
+  /**
+   * Mustache 接口文件数据源
+   */
   #servicesView: IServicesView = {
     list: [],
     typesFileName: '',
   };
 
+  /**
+   * Mustache 类型文件数据源
+   */
   #typesView: ITypesView = {
     list: [],
   };
@@ -47,20 +60,29 @@ export class Generator {
     this.#servicesView.typesFileName = config.typesFileName!;
   }
 
-  #isParamPath(pathStr: string) {
+  /**
+   * 判断路径中是否包含参数
+   */
+  #isParamPath(pathStr: string): boolean {
     return pathStr.indexOf('{id}') > -1;
   }
 
-  #resolveHasParams(operationObject: OpenAPIV3.OperationObject) {
+  /**
+   * 解析字段 hasParams（是否包含参数）
+   */
+  #resolveHasParams(operationObject: OpenAPIV3.OperationObject): boolean {
     if (!operationObject.parameters?.length) return false;
     return true;
   }
 
+  /**
+   * 解析字段 ParamsType（参数类型）
+   */
   #resolveParamsType(
     pathKey: string,
     method: keyof typeof EHttpMethod,
     operationObject: OpenAPIV3.OperationObject,
-  ) {
+  ): string {
     if (!operationObject.parameters?.length) return 'undefined';
     if (this.#isParamPath(pathKey)) {
       return (
@@ -71,35 +93,50 @@ export class Generator {
     return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.IParams`;
   }
 
-  #resolveHasBody(operationObject: OpenAPIV3.OperationObject) {
+  /**
+   * 解析字段 hasBody（是否包含请求体）
+   */
+  #resolveHasBody(operationObject: OpenAPIV3.OperationObject): boolean {
     if (!operationObject.requestBody) return false;
     return true;
   }
 
+  /**
+   * 解析字段 bodyType（请求体类型）
+   */
   #resolveBodyType(
     pathKey: string,
     method: keyof typeof EHttpMethod,
     operationObject: OpenAPIV3.OperationObject,
-  ) {
+  ): string {
     if (!operationObject.requestBody) return 'undefined';
     return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.IBody`;
   }
 
-  #resolveHasResponse(operationObject: OpenAPIV3.OperationObject) {
+  /**
+   * 解析字段 hasResponse（是否包含响应）
+   */
+  #resolveHasResponse(operationObject: OpenAPIV3.OperationObject): boolean {
     if (operationObject.responses.default) return true;
     return false;
   }
 
+  /**
+   * 解析字段 responseType（响应类型）
+   */
   #resolveResponseType(
     pathKey: string,
     method: keyof typeof EHttpMethod,
     operationObject: OpenAPIV3.OperationObject,
-  ) {
+  ): string {
     if (!operationObject.responses.default) return 'void';
     return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.IRes`;
   }
 
-  #resolveRequestPath(pathKey: string) {
+  /**
+   * 解析字段 requestPath（实际请求路径）
+   */
+  #resolveRequestPath(pathKey: string): string {
     const isParamPath = this.#isParamPath(pathKey);
     if (isParamPath) {
       // eslint-disable-next-line no-template-curly-in-string
@@ -108,10 +145,13 @@ export class Generator {
     return pathKey;
   }
 
+  /**
+   * 解析字段 paramsTypeText（参数类型文本）
+   */
   #resolveParamsTypeText(
     pathKey: string,
     operationObject: OpenAPIV3.OperationObject,
-  ) {
+  ): string {
     if (!operationObject.parameters?.length) return '';
     if (this.#isParamPath(pathKey)) return '';
 
@@ -134,7 +174,12 @@ export class Generator {
     return paramsTypeText;
   }
 
-  async #resolveBodyTypeText(operationObject: OpenAPIV3.OperationObject) {
+  /**
+   * 解析字段 bodyTypeText（请求体类型文本）
+   */
+  async #resolveBodyTypeText(
+    operationObject: OpenAPIV3.OperationObject,
+  ): Promise<string> {
     let schema = (operationObject.requestBody as OpenAPIV3.RequestBodyObject)
       ?.content?.['application/json']?.schema as OpenAPIV3.ReferenceObject;
     if (schema?.$ref) {
@@ -148,7 +193,12 @@ export class Generator {
     return bodyTypeText;
   }
 
-  async #resolveResTypeText(operationObject: OpenAPIV3.OperationObject) {
+  /**
+   * 解析字段 resTypeText（响应类型文本）
+   */
+  async #resolveResTypeText(
+    operationObject: OpenAPIV3.OperationObject,
+  ): Promise<string> {
     if (!operationObject.responses.default) return '';
     let schema = (
       (
@@ -166,10 +216,13 @@ export class Generator {
     return resTypeText;
   }
 
+  /**
+   * 解析字段 typeText（类型文本）
+   */
   async #resolveTypeText(
     pathKey: string,
     operationObject: OpenAPIV3.OperationObject,
-  ) {
+  ): Promise<string> {
     const paramsTypeText = this.#resolveParamsTypeText(
       pathKey,
       operationObject,
@@ -179,11 +232,14 @@ export class Generator {
     return `${paramsTypeText}${bodyTypeText}${resTypeText}`;
   }
 
+  /**
+   * 解析单个接口
+   */
   #parseServiceItem(
     pathKey: string,
     method: keyof typeof EHttpMethod,
     operationObject: OpenAPIV3.OperationObject,
-  ) {
+  ): void {
     if (this.#config.baseURL) {
       // eslint-disable-next-line no-param-reassign
       pathKey = pathKey.replace(this.#config.baseURL!, '');
@@ -226,11 +282,14 @@ export class Generator {
     this.#servicesView.list.push(item);
   }
 
+  /**
+   * 解析单个类型
+   */
   async #parseTypeItem(
     pathKey: string,
     method: keyof typeof EHttpMethod,
     operationObject: OpenAPIV3.OperationObject,
-  ) {
+  ): Promise<void> {
     if (this.#config.baseURL) {
       // eslint-disable-next-line no-param-reassign
       pathKey = pathKey.replace(this.#config.baseURL!, '');
@@ -253,7 +312,10 @@ export class Generator {
     this.#typesView.list.push(item);
   }
 
-  async #parse() {
+  /**
+   * 解析 swagger 文档对象获取 Mustache 渲染数据源
+   */
+  async #parse(): Promise<void> {
     let pathKeys: string[] = (Object.keys(this.#doc.paths) || []).sort();
     const includePaths = this.#config.includePaths || [];
     const excludePaths = this.#config.excludePaths || [];
@@ -298,7 +360,10 @@ export class Generator {
     }
   }
 
-  async #writeServices() {
+  /**
+   * 写入接口文件
+   */
+  async #writeServices(): Promise<void> {
     const outputDir = this.#config.outputDir as string;
     const templateDir = this.#config.templateDir as string;
     if (!fs.existsSync(outputDir)) {
@@ -375,6 +440,9 @@ export class Generator {
     fs.writeFileSync(servicesPath, formatedText, this.#fileOptions);
   }
 
+  /**
+   * 写入类型文件
+   */
   async #writeTypes() {
     const outputDir = this.#config.outputDir as string;
     const templateDir = this.#config.templateDir as string;
@@ -420,6 +488,9 @@ export class Generator {
     fs.writeFileSync(typesPath, formatedText, this.#fileOptions);
   }
 
+  /**
+   * 初始化
+   */
   async init() {
     await this.#parse();
     this.#writeServices();

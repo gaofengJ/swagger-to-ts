@@ -47,6 +47,6 @@ export const prettierOptions: prettier.Options = {
 };
 
 /**
- * 文件读取、写入选项
+ * 文件读写选项
  */
 export const fileOptions = { encoding: 'utf-8' } as WriteFileOptions;
