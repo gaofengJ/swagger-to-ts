@@ -10,5 +10,5 @@ import type {
  * @description 接口路径：{{{path}}}
  * @description 接口分组：{{tags}}
  */
-export const {{name}} = ({{> servicesItemArgs}}config: RequestConfig = {},) => axios.{{method}}<{{> servicesItemRes}}>('{{{requestPath}}}',{{> servicesItemData}}config);
+export const {{name}} = ({{> servicesItemArgs}}config: RequestConfig = {},) => axios.{{method}}<{{> servicesItemRes}}>({{#isParamPath}}`{{{requestPath}}}`{{/isParamPath}}{{^isParamPath}}'{{{requestPath}}}'{{/isParamPath}},{{> servicesItemData}}config);
 {{/list}}

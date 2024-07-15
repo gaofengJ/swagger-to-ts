@@ -99,6 +99,15 @@ export class Generator {
     return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.IRes`;
   }
 
+  #resolveRequestPath(pathKey: string) {
+    const isParamPath = this.#isParamPath(pathKey);
+    if (isParamPath) {
+      // eslint-disable-next-line no-template-curly-in-string
+      return pathKey.replace(/{id}/g, '${id}');
+    }
+    return pathKey;
+  }
+
   #resolveParamsTypeText(
     pathKey: string,
     operationObject: OpenAPIV3.OperationObject,
@@ -126,13 +135,12 @@ export class Generator {
   }
 
   async #resolveBodyTypeText(operationObject: OpenAPIV3.OperationObject) {
-    const componentUrl = (
-      (operationObject.requestBody as OpenAPIV3.RequestBodyObject)?.content?.[
-        'application/json'
-      ]?.schema as OpenAPIV3.ReferenceObject
-    )?.$ref;
-    if (!componentUrl) return '';
-    const schema = findObjectByPath(this.#doc, componentUrl);
+    let schema = (operationObject.requestBody as OpenAPIV3.RequestBodyObject)
+      ?.content?.['application/json']?.schema as OpenAPIV3.ReferenceObject;
+    if (schema?.$ref) {
+      schema = findObjectByPath(this.#doc, schema.$ref);
+    }
+    if (!schema) return '';
     const bodyTypeText = await compile(schema, 'IBody', {
       bannerComment: '',
       unknownAny: false,
@@ -213,7 +221,7 @@ export class Generator {
       method,
       operationObject,
     );
-    item.requestPath = pathKey;
+    item.requestPath = this.#resolveRequestPath(pathKey);
 
     this.#servicesView.list.push(item);
   }
@@ -223,6 +231,10 @@ export class Generator {
     method: keyof typeof EHttpMethod,
     operationObject: OpenAPIV3.OperationObject,
   ) {
+    if (this.#config.baseURL) {
+      // eslint-disable-next-line no-param-reassign
+      pathKey = pathKey.replace(this.#config.baseURL!, '');
+    }
     const item: ITypesViewListItem = {
       namespace: '',
       summary: '',

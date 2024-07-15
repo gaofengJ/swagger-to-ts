@@ -85,6 +85,11 @@ export const completeSchemaRequired = (schema: any) => {
   schema.required = [];
   for (let i = 0; i < Object.keys(schema.properties).length; i += 1) {
     schema.required.push(Object.keys(schema.properties)[i]);
+    // eslint-disable-next-line no-param-reassign
+    schema.properties[Object.keys(schema.properties)[i]] =
+      completeSchemaRequired(
+        schema.properties[Object.keys(schema.properties)[i]],
+      );
   }
   return schema;
 };
