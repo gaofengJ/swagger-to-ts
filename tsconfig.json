@@ -8,7 +8,6 @@
     "allowSyntheticDefaultImports": true,
     "target": "ES2021",
     "sourceMap": true,
-    "rootDir": "./src", 
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
@@ -20,8 +19,9 @@
     "noImplicitAny": true,
     "strictBindCallApply": true,
     "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
   },
-  "include": ["src"],
-  "exclude": ["src/api"]
+  "include": [
+    "src/**/*.ts",
+  ]
 }
