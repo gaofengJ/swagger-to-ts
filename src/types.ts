@@ -89,7 +89,7 @@ export interface IServicesViewListItem {
    */
   name: string;
   /**
-   * 是否为参数路径 形如/a/b/{id}
+   * 是否为动态参数路径 形如/a/b/{id}
    */
   isParamPath: boolean;
   /**
@@ -161,7 +161,7 @@ export interface ITypesViewListItem {
    */
   tags: string;
   /**
-   * 是否为参数路径 形如/a/b/{id}
+   * 是否为动态参数路径 形如/a/b/{id}
    */
   isParamPath: boolean;
   /**

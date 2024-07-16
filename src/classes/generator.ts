@@ -83,7 +83,7 @@ export class Generator {
     method: keyof typeof EHttpMethod,
     operationObject: OpenAPIV3.OperationObject,
   ): string {
-    if (!operationObject.parameters?.length) return 'undefined';
+    if (!operationObject.parameters?.length) return '';
     if (this.#isParamPath(pathKey)) {
       return (
         (operationObject.parameters as OpenAPIV3.ParameterObject[])[0]
@@ -109,7 +109,7 @@ export class Generator {
     method: keyof typeof EHttpMethod,
     operationObject: OpenAPIV3.OperationObject,
   ): string {
-    if (!operationObject.requestBody) return 'undefined';
+    if (!operationObject.requestBody) return '';
     return `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}.IBody`;
   }
 
@@ -152,7 +152,9 @@ export class Generator {
     pathKey: string,
     operationObject: OpenAPIV3.OperationObject,
   ): string {
+    // 如果操作对象没有参数或参数列表为空，返回空字符串
     if (!operationObject.parameters?.length) return '';
+    // 如果是动态参数路径，返回空字符串
     if (this.#isParamPath(pathKey)) return '';
 
     const templateDir = this.#config.templateDir as string;
@@ -160,17 +162,22 @@ export class Generator {
       templateDir,
       'services-types-item-params.mustache',
     );
+    // 获取类型参数模版内容
     const typesItemParamsTemplate = fs.readFileSync(
       typesItemParamsPath,
       this.#fileOptions,
     );
 
+    // 过滤操作对象中的参数，保留位于查询字符串中的参数
     const paramsList = operationObject.parameters.filter(
       (i: OpenAPIV3.ParameterObject) => i.in === 'query',
     ) as OpenAPIV3.ParameterObject[];
+
+    // 使用 Mustache 渲染模板，将查询参数列表插入模板中
     const paramsTypeText = Mustache.render(typesItemParamsTemplate as string, {
       paramsList,
     });
+
     return paramsTypeText;
   }
 
@@ -180,12 +187,19 @@ export class Generator {
   async #resolveBodyTypeText(
     operationObject: OpenAPIV3.OperationObject,
   ): Promise<string> {
+    // 尝试获取操作对象中请求体的 JSON schema
     let schema = (operationObject.requestBody as OpenAPIV3.RequestBodyObject)
       ?.content?.['application/json']?.schema as OpenAPIV3.ReferenceObject;
+
+    // 如果 schema 是一个引用对象，通过引用路径在文档中找到实际的 schema 对象
     if (schema?.$ref) {
       schema = findObjectByPath(this.#doc, schema.$ref);
     }
+
+    // 如果 schema 仍然为空，返回空字符串
     if (!schema) return '';
+
+    // 使用编译函数生成请求体类型文本，并指定生成接口名为 'IBody'
     const bodyTypeText = await compile(schema, 'IBody', {
       bannerComment: '',
       unknownAny: false,
@@ -199,16 +213,25 @@ export class Generator {
   async #resolveResTypeText(
     operationObject: OpenAPIV3.OperationObject,
   ): Promise<string> {
+    // 检查操作对象中是否有默认响应，没有则返回空字符串
     if (!operationObject.responses.default) return '';
+
+    // 尝试获取默认响应体的 JSON schema
     let schema = (
       (
         (operationObject.responses.default as OpenAPIV3.ResponseObject)
           ?.content?.['application/json']?.schema as OpenAPIV3.SchemaObject
       ).allOf?.[1] as OpenAPIV3.SchemaObject
     ).properties?.data as OpenAPIV3.SchemaObject;
+
+    // 如果 schema 为空，则返回空字符串
     if (!schema) return '';
+
+    // 替换 schema 中的引用，获取实际对象
     schema = replaceReferenceOfObject(this.#doc, schema);
+    // 补全 schema 的必填字段
     schema = completeSchemaRequired(schema);
+    // 使用编译函数生成响应体类型文本，指定生成接口名为 'IRes'
     const resTypeText = await compile(schema, 'IRes', {
       bannerComment: '',
       unknownAny: false,
@@ -312,10 +335,14 @@ export class Generator {
    * 解析 swagger 文档对象获取 Mustache 渲染数据源
    */
   async #parse(): Promise<void> {
+    // 获取文档中的所有路径键，并按字母顺序排序
     let pathKeys: string[] = (Object.keys(this.#doc.paths) || []).sort();
+
+    // 获取配置中的包含路径和排除路径
     const includePaths = this.#config.includePaths || [];
     const excludePaths = this.#config.excludePaths || [];
 
+    // 如果包含路径列表不为空，过滤路径键，只保留包含路径中的键
     if (includePaths.length > 0) {
       const includePathsSet = new Set<string>();
       for (let i = 0; i < includePaths.length; i += 1) {
@@ -324,6 +351,7 @@ export class Generator {
       pathKeys = pathKeys.filter((i) => includePathsSet.has(i));
     }
 
+    // 如果排除路径列表不为空，过滤路径键，移除排除路径中的键
     if (excludePaths.length > 0) {
       const excludePathsSet = new Set<string>();
       for (let i = 0; i < excludePaths.length; i += 1) {
@@ -332,20 +360,26 @@ export class Generator {
       pathKeys = pathKeys.filter((i) => !excludePathsSet.has(i));
     }
 
+    // 遍历路径键
     for (let i = 0; i < pathKeys.length; i += 1) {
       const pathKey = pathKeys[i];
       const pathItemObject = this.#doc.paths[
         pathKey
       ] as OpenAPIV3.PathItemObject;
+
+      // 遍历路径项对象中的每个操作对象
       for (let j = 0; j < Object.keys(pathItemObject).length; j += 1) {
         const operationObject = pathItemObject[
           Object.keys(pathItemObject)[j] as keyof typeof EHttpMethod
         ] as OpenAPIV3.OperationObject;
+
+        // 解析接口项
         this.#parseServiceItem(
           pathKey,
           Object.keys(pathItemObject)[j] as keyof typeof EHttpMethod,
           operationObject,
         );
+        // 解析类型项
         // eslint-disable-next-line no-await-in-loop
         await this.#parseTypeItem(
           pathKey,
@@ -360,34 +394,37 @@ export class Generator {
    * 写入接口文件
    */
   async #writeServices(): Promise<void> {
+    // 获取输出目录和模板目录
     const outputDir = this.#config.outputDir as string;
     const templateDir = this.#config.templateDir as string;
+
+    // 如果输出目录不存在，递归创建目录
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
+    // 构建接口文件的路径
     const servicesPath = path.join(
       this.#config.outputDir!,
       this.#config.servicesFileName!,
     );
-
+    // 构建接口头部模板文件的路径
     const servicesHeaderPath = path.join(
       templateDir,
       'services-header.mustache',
     );
-    if (!fs.existsSync(servicesHeaderPath)) {
-      throw new Error(`模版文件${servicesHeaderPath}不存在`);
-    }
+
+    // 读取接口头部模板文件内容并渲染接口头部模板
     const servicesHeaderTemplate = fs.readFileSync(
       servicesHeaderPath,
       this.#fileOptions,
     );
-
     const servicesHeaderText = Mustache.render(
       servicesHeaderTemplate as string,
       {},
     );
 
+    // 构建接口项模板文件的路径
     const servicesItemsPath = path.join(templateDir, 'services-items.mustache');
     const servicesItemArgsPath = path.join(
       templateDir,
@@ -401,6 +438,8 @@ export class Generator {
       templateDir,
       'services-item-data.mustache',
     );
+
+    // 读取接口项模板文件内容
     const servicesItemsTemplate = fs.readFileSync(
       servicesItemsPath,
       this.#fileOptions,
@@ -417,6 +456,8 @@ export class Generator {
       servicesItemDataPath,
       this.#fileOptions,
     );
+
+    // 定义 Mustache 部分模板
     const partials = {
       servicesItemArgs: servicesItemArgsTemplate,
       servicesItemRes: servicesItemResTemplate,
@@ -428,11 +469,13 @@ export class Generator {
       partials as PartialsOrLookupFn,
     );
 
+    // 使用 Prettier 格式化生成的文本
     const formatedText = await prettier.format(
       `${servicesHeaderText}${servicesItemsText}`,
       prettierOptions,
     );
 
+    // 将格式化后的文本写入接口文件
     fs.writeFileSync(servicesPath, formatedText, this.#fileOptions);
   }
 
@@ -440,47 +483,59 @@ export class Generator {
    * 写入类型文件
    */
   async #writeTypes() {
+    // 获取输出目录和模板目录
     const outputDir = this.#config.outputDir as string;
     const templateDir = this.#config.templateDir as string;
+
+    // 如果输出目录不存在，递归创建目录
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
+    // 构建类型文件的路径
     const typesPath = path.join(
       this.#config.outputDir!,
       this.#config.typesFileName!,
     );
 
+    // 构建类型头部模板文件的路径
     const typesHeaderPath = path.join(
       templateDir,
       'services-types-header.mustache',
     );
-    if (!fs.existsSync(typesHeaderPath)) {
-      throw new Error(`模版文件${typesHeaderPath}不存在`);
-    }
+
+    // 读取类型头部模板文件内容并渲染类型头部模板
     const typesHeaderTemplate = fs.readFileSync(
       typesHeaderPath,
       this.#fileOptions,
     );
     const typesHeaderText = Mustache.render(typesHeaderTemplate as string, {});
 
+    // 构建类型项模板文件的路径
     const typesItemsPath = path.join(
       templateDir,
       'services-types-items.mustache',
     );
+
+    // 读取类型项模板文件内容
     const typesItemsTemplate = fs.readFileSync(
       typesItemsPath,
       this.#fileOptions,
     );
+
+    // 渲染类型项模板
     const typesItemsText = Mustache.render(
       typesItemsTemplate as string,
       this.#typesView,
     );
+
+    // 使用 Prettier 格式化生成的文本
     const formatedText = await prettier.format(
       `${typesHeaderText}${typesItemsText}`,
       prettierOptions,
     );
 
+    // 将格式化后的文本写入类型文件
     fs.writeFileSync(typesPath, formatedText, this.#fileOptions);
   }
 
