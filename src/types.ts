@@ -115,11 +115,11 @@ export interface IServicesViewListItem {
   /**
    * 是否包含响应
    */
-  hasResponse: boolean;
+  hasRes: boolean;
   /**
    * 响应类型
    */
-  responseType: string;
+  resType: string;
   /**
    * 实际请求路径
    */

@@ -114,17 +114,17 @@ export class Generator {
   }
 
   /**
-   * 解析字段 hasResponse（是否包含响应）
+   * 解析字段 hasRes（是否包含响应）
    */
-  #resolveHasResponse(operationObject: OpenAPIV3.OperationObject): boolean {
+  #resolveHasRes(operationObject: OpenAPIV3.OperationObject): boolean {
     if (operationObject.responses.default) return true;
     return false;
   }
 
   /**
-   * 解析字段 responseType（响应类型）
+   * 解析字段 resType（响应类型）
    */
-  #resolveResponseType(
+  #resolveResType(
     pathKey: string,
     method: keyof typeof EHttpMethod,
     operationObject: OpenAPIV3.OperationObject,
@@ -256,8 +256,8 @@ export class Generator {
       hasBody: false,
       bodyType: '',
       method: '',
-      hasResponse: false,
-      responseType: '',
+      hasRes: false,
+      resType: '',
       requestPath: '',
     };
     item.namespace = `NS${pathToPascalCase(method)}${removeBraces(pathToPascalCase(pathKey))}`;
@@ -271,12 +271,8 @@ export class Generator {
     item.hasBody = this.#resolveHasBody(operationObject);
     item.bodyType = this.#resolveBodyType(pathKey, method, operationObject);
     item.method = method;
-    item.hasResponse = this.#resolveHasResponse(operationObject);
-    item.responseType = this.#resolveResponseType(
-      pathKey,
-      method,
-      operationObject,
-    );
+    item.hasRes = this.#resolveHasRes(operationObject);
+    item.resType = this.#resolveResType(pathKey, method, operationObject);
     item.requestPath = this.#resolveRequestPath(pathKey);
 
     this.#servicesView.list.push(item);
