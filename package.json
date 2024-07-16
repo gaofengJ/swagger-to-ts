@@ -5,6 +5,7 @@
   "author": "mufeng",
   "private": true,
   "scripts": {
+    "build": "tsc -p .",
     "lint": "eslint .",
     "prepare": "husky install",
     "commit": "git-cz",
