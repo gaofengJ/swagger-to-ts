@@ -1,10 +1,10 @@
 {
   "name": "mufeng-swagger-to-ts",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "swagger-to-ts",
   "author": "mufeng",
   "scripts": {
-    "build": "tsc -p .",
+    "build": "tsc",
     "lint": "eslint .",
     "prepare": "husky install",
     "commit": "git-cz",
