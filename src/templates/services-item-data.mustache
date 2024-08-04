@@ -1,16 +1,16 @@
 {{#isParamPath}}
+  {{#hasParams}}
+    { ...config }, 
+  {{/hasParams}}
   {{#hasBody}}
-    body, 
-  {{/hasBody}}
-  {{^hasBody}}
-    {}, 
+    body, config
   {{/hasBody}}
 {{/isParamPath}}
 {{^isParamPath}}
   {{#hasParams}}
-    { params }, 
+    { params, ...config }, 
   {{/hasParams}}
   {{#hasBody}}
-    body, 
+    body, config
   {{/hasBody}}
 {{/isParamPath}}

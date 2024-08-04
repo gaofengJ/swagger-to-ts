@@ -1,6 +1,6 @@
 {
   "name": "mufeng-swagger-to-ts",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "swagger-to-ts",
   "author": "mufeng",
   "scripts": {
