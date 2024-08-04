@@ -57,7 +57,7 @@ export class Generator {
     this.#config = config;
     this.#doc = doc;
 
-    this.#servicesView.typesFileName = config.typesFileName!;
+    this.#servicesView.typesFileName = `${config.typesFileName!}.ts`;
   }
 
   /**
@@ -406,7 +406,7 @@ export class Generator {
     // 构建接口文件的路径
     const servicesPath = path.join(
       this.#config.outputDir!,
-      this.#config.servicesFileName!,
+      `${this.#config.servicesFileName!}.ts`,
     );
     // 构建接口头部模板文件的路径
     const servicesHeaderPath = path.join(
@@ -495,7 +495,7 @@ export class Generator {
     // 构建类型文件的路径
     const typesPath = path.join(
       this.#config.outputDir!,
-      this.#config.typesFileName!,
+      `${this.#config.typesFileName!}.ts`,
     );
 
     // 构建类型头部模板文件的路径
