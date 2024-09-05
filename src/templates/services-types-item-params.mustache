@@ -3,6 +3,6 @@ export interface IParams {
       /**
         * {{#description}}{{description}}{{/description}}{{^description}}{{name}}{{/description}}
         */
-    {{name}}{{^required}}?{{/required}}: {{schema.type}};
+    {{name}}{{^required}}?{{/required}}: {{#ifEquals schema.type "array"}}{{schema.items.type}}[]{{else}}{{schema.type}}{{/ifEquals}};
   {{/paramsList}}
 }
