@@ -1,10 +1,6 @@
 {
   "name": "mufeng-swagger-to-ts",
-<<<<<<< Updated upstream
-  "version": "0.0.9",
-=======
   "version": "0.0.10",
->>>>>>> Stashed changes
   "description": "swagger-to-ts",
   "author": "mufeng",
   "scripts": {
